@@ -29,6 +29,11 @@ export async function fetchApplications(
   return res.data.data as ListResponse;
 }
 
+export async function fetchBoardApplications(workspaceId: string) {
+  const res = await api.get(`/workspaces/${workspaceId}/applications/board`);
+  return res.data.data as Application[];
+}
+
 export async function createApplication(
   workspaceId: string,
   data: ApplicationFormData,

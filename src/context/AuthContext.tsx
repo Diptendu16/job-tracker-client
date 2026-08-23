@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   function mapWorkspace(ws: any): Workspace | null {
     if (!ws) return null;
-    return { id: ws._id, name: ws.name };
+    return { id: ws.id, name: ws.name };
   }
 
   async function login(email: string, password: string) {
