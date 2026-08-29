@@ -5,6 +5,8 @@ import type {
   ApplicationPlatform,
   ApplicationStatus,
 } from "../types/application";
+import { type ResumeVersion } from "../types/resumeVersion";
+import * as resumeVersionApi from "../api/resumeVersionApi";
 
 const PLATFORMS: ApplicationPlatform[] = [
   "INTERNSHALA",
@@ -30,6 +32,7 @@ interface Props {
   onClose: () => void;
   onSubmit: (data: ApplicationFormData) => Promise<void>;
   initialData?: Application | null;
+  workspaceId: string;
 }
 
 const emptyForm: ApplicationFormData = {
@@ -42,6 +45,7 @@ const emptyForm: ApplicationFormData = {
   oaDate: "",
   interviewDate: "",
   notes: "",
+  resumeVersion: "",
 };
 
 export function ApplicationModal({
@@ -49,10 +53,18 @@ export function ApplicationModal({
   onClose,
   onSubmit,
   initialData,
+  workspaceId,
 }: Props) {
   const [form, setForm] = useState<ApplicationFormData>(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [resumeVersions, setResumeVersions] = useState<ResumeVersion[]>([]);
+
+  useEffect(() => {
+    if (isOpen && workspaceId) {
+      resumeVersionApi.fetchResumeVersions(workspaceId).then(setResumeVersions);
+    }
+  }, [isOpen, workspaceId]);
 
   useEffect(() => {
     if (initialData) {
@@ -66,6 +78,7 @@ export function ApplicationModal({
         oaDate: initialData.oaDate?.split("T")[0] ?? "",
         interviewDate: initialData.interviewDate?.split("T")[0] ?? "",
         notes: initialData.notes ?? "",
+        resumeVersion: initialData.resumeVersion ?? "", // NEW
       });
     } else {
       setForm(emptyForm);
@@ -146,6 +159,26 @@ export function ApplicationModal({
               {STATUSES.map((s) => (
                 <option key={s} value={s}>
                   {s}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-gray-400 text-sm">
+              Resume Version (optional)
+            </label>
+            <select
+              value={form.resumeVersion}
+              onChange={(e) =>
+                setForm({ ...form, resumeVersion: e.target.value })
+              }
+              className="bg-gray-700 text-white p-2 rounded w-full"
+            >
+              <option value="">None</option>
+              {resumeVersions.map((v) => (
+                <option key={v._id} value={v._id}>
+                  {v.name}
                 </option>
               ))}
             </select>

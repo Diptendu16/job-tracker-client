@@ -28,6 +28,7 @@ export interface Application {
   oaDate?: string;
   interviewDate?: string;
   notes?: string;
+  resumeVersion?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -58,4 +59,5 @@ export interface ApplicationFormData {
   oaDate?: string;
   interviewDate?: string;
   notes?: string;
+  resumeVersion?: string;
 }

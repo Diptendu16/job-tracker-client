@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
+import { Link } from "react-router-dom";
 import type {
   Application,
   ApplicationFilters,
@@ -30,18 +31,21 @@ export default function Dashboard() {
   const [boardRefreshKey, setBoardRefreshKey] = useState(0);
 
   const loadApplications = useCallback(async () => {
-  if (!workspace) return;
-  setLoading(true);
-  try {
-    const result = await applicationApi.fetchApplications(workspace.id, filters);
-    setApplications(result.applications);
-    setPagination(result.pagination);
-  } catch {
-    console.error("Failed to load applications");
-  } finally {
-    setLoading(false);
-  }
-}, [workspace, filters]);
+    if (!workspace) return;
+    setLoading(true);
+    try {
+      const result = await applicationApi.fetchApplications(
+        workspace.id,
+        filters,
+      );
+      setApplications(result.applications);
+      setPagination(result.pagination);
+    } catch {
+      console.error("Failed to load applications");
+    } finally {
+      setLoading(false);
+    }
+  }, [workspace, filters]);
   useEffect(() => {
     loadApplications();
   }, [loadApplications]);
@@ -101,12 +105,20 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gray-900 text-white p-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Welcome, {user?.name}</h1>
-        <button
-          onClick={logout}
-          className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-semibold"
-        >
-          Logout
-        </button>
+        <div className="flex gap-4 items-center">
+          <Link
+            to="/resume-versions"
+            className="text-blue-400 hover:underline text-sm"
+          >
+            Resume Versions
+          </Link>
+          <button
+            onClick={logout}
+            className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-semibold"
+          >
+            Logout
+          </button>
+        </div>
       </div>
 
       <div className="flex gap-2 mb-4">
@@ -244,6 +256,7 @@ export default function Dashboard() {
         onClose={() => setModalOpen(false)}
         onSubmit={handleSubmit}
         initialData={editingApp}
+        workspaceId={workspace?.id ?? ""}
       />
     </div>
   );
