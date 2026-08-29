@@ -1,4 +1,4 @@
-import { useState, useEffect, FormEvent } from "react";
+import { useState, useEffect, type SubmitEvent } from "react";
 import type {
   Application,
   ApplicationFormData,
@@ -46,6 +46,7 @@ const emptyForm: ApplicationFormData = {
   interviewDate: "",
   notes: "",
   resumeVersion: "",
+  followUpDate: "",
 };
 
 export function ApplicationModal({
@@ -78,7 +79,8 @@ export function ApplicationModal({
         oaDate: initialData.oaDate?.split("T")[0] ?? "",
         interviewDate: initialData.interviewDate?.split("T")[0] ?? "",
         notes: initialData.notes ?? "",
-        resumeVersion: initialData.resumeVersion ?? "", // NEW
+        resumeVersion: initialData.resumeVersion ?? "",
+        followUpDate: initialData.followUpDate?.split("T")[0] ?? "",
       });
     } else {
       setForm(emptyForm);
@@ -87,7 +89,7 @@ export function ApplicationModal({
 
   if (!isOpen) return null;
 
-  async function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: SubmitEvent) {
     e.preventDefault();
     setError("");
     setSubmitting(true);
@@ -197,7 +199,7 @@ export function ApplicationModal({
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-gray-400 text-sm">Deadline</label>
               <input
@@ -223,6 +225,17 @@ export function ApplicationModal({
                 value={form.interviewDate}
                 onChange={(e) =>
                   setForm({ ...form, interviewDate: e.target.value })
+                }
+                className="bg-gray-700 text-white p-2 rounded w-full"
+              />
+            </div>
+            <div>
+              <label className="text-gray-400 text-sm">Follow-up Date</label>
+              <input
+                type="date"
+                value={form.followUpDate}
+                onChange={(e) =>
+                  setForm({ ...form, followUpDate: e.target.value })
                 }
                 className="bg-gray-700 text-white p-2 rounded w-full"
               />

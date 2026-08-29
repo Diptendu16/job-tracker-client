@@ -31,6 +31,8 @@ export interface Application {
   resumeVersion?: string;
   createdAt: string;
   updatedAt: string;
+  followUpDate?: string;
+  lastActivityAt: string;
 }
 
 export interface Pagination {
@@ -60,4 +62,10 @@ export interface ApplicationFormData {
   interviewDate?: string;
   notes?: string;
   resumeVersion?: string;
+  followUpDate?: string;
+}
+
+export interface NeedsAttentionItem {
+  application: Application;
+  reasons: string[];
 }

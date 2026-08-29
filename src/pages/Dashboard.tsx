@@ -12,6 +12,7 @@ import { Pagination } from "../components/Pagination";
 import { StatusBadge } from "../components/StatusBadge";
 import { format } from "date-fns";
 import { KanbanBoard } from "../components/KanbanBoard";
+import { NeedsAttentionPanel } from "../components/NeedsAttentionPanel";
 
 export default function Dashboard() {
   const { user, workspace, logout } = useAuth();
@@ -78,6 +79,11 @@ export default function Dashboard() {
     setModalOpen(true);
   }
 
+  async function refreshAllData() {
+    await loadApplications();
+    setBoardRefreshKey((k) => k + 1);
+  }
+
   async function handleSubmit(data: any) {
     if (!workspace) return;
     if (editingApp) {
@@ -89,16 +95,14 @@ export default function Dashboard() {
     } else {
       await applicationApi.createApplication(workspace.id, data);
     }
-    await loadApplications();
-    setBoardRefreshKey((k) => k + 1);
+    await refreshAllData();
   }
 
   async function handleDelete(id: string) {
     if (!workspace) return;
     if (!confirm("Delete this application?")) return;
     await applicationApi.deleteApplication(workspace.id, id);
-    await loadApplications();
-    setBoardRefreshKey((k) => k + 1);
+    await refreshAllData();
   }
 
   return (
@@ -242,12 +246,20 @@ export default function Dashboard() {
         </>
       )}
 
+      {workspace && (
+        <NeedsAttentionPanel
+          workspaceId={workspace.id}
+          refreshKey={boardRefreshKey}
+          onItemClick={openEditModal}
+        />
+      )}
+
       {view === "board" && workspace && (
         <KanbanBoard
           workspaceId={workspace.id}
           onCardClick={openEditModal}
           refreshKey={boardRefreshKey}
-          onStatusUpdated={loadApplications}
+          onStatusUpdated={refreshAllData}
         />
       )}
 

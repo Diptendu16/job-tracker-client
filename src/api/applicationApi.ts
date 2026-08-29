@@ -4,6 +4,7 @@ import type {
   ApplicationFilters,
   ApplicationFormData,
   Pagination,
+  NeedsAttentionItem,
 } from "../types/application";
 
 interface ListResponse {
@@ -56,4 +57,11 @@ export async function updateApplication(
 
 export async function deleteApplication(workspaceId: string, id: string) {
   await api.delete(`/workspaces/${workspaceId}/applications/${id}`);
+}
+
+export async function fetchNeedsAttention(workspaceId: string) {
+  const res = await api.get(
+    `/workspaces/${workspaceId}/applications/needs-attention`,
+  );
+  return res.data.data as NeedsAttentionItem[];
 }
