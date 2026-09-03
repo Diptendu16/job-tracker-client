@@ -116,6 +116,12 @@ export default function Dashboard() {
           >
             Resume Versions
           </Link>
+          <Link
+            to="/analytics"
+            className="text-blue-400 hover:underline text-sm"
+          >
+            Analytics
+          </Link>
           <button
             onClick={logout}
             className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-semibold"
