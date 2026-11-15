@@ -13,6 +13,8 @@ import { StatusBadge } from "../components/StatusBadge";
 import { format } from "date-fns";
 import { KanbanBoard } from "../components/KanbanBoard";
 import { NeedsAttentionPanel } from "../components/NeedsAttentionPanel";
+import { WorkspaceSwitcher } from "../components/WorkspaceSwitcher";
+import { InviteMembersButton } from "../components/InviteMembersButton";
 
 export default function Dashboard() {
   const { user, workspace, logout } = useAuth();
@@ -108,8 +110,12 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Welcome, {user?.name}</h1>
+        <div className="flex items-center gap-4">
+          <h1 className="text-2xl font-bold">Welcome, {user?.name}</h1>
+          <WorkspaceSwitcher />
+        </div>
         <div className="flex gap-4 items-center">
+          <InviteMembersButton />
           <Link
             to="/resume-versions"
             className="text-blue-400 hover:underline text-sm"

@@ -6,6 +6,7 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import ResumeVersions from "./pages/ResumeVersions";
 import Analytics from "./pages/Analytics";
+import InvitePage from "./pages/InvitePage";
 
 function App() {
   return (
@@ -38,6 +39,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/invite/:token" element={<InvitePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
