@@ -3,12 +3,12 @@ import {
   useContext,
   useState,
   useEffect,
-  type ReactNode,
   useRef,
+  type ReactNode,
 } from "react";
 import api from "../api/axios";
 import * as workspaceApi from "../api/workspaceApi";
-import { type WorkspaceSummary } from "../types/workspace";
+import type { WorkspaceSummary } from "../types/workspace";
 import { connectSocket, disconnectSocket, getSocket } from "../socket/socket";
 
 interface User {
@@ -22,6 +22,7 @@ interface AuthContextType {
   workspace: WorkspaceSummary | null;
   workspaces: WorkspaceSummary[];
   loading: boolean;
+  resyncKey: number;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -36,32 +37,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [workspace, setWorkspace] = useState<WorkspaceSummary | null>(null);
   const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const currentRoomRef = useRef<string | null>(null); // tracks which workspace room we're currently in
+  // Bumped after a reconnect + room re-join, so views know to refetch what they may have missed.
+  const [resyncKey, setResyncKey] = useState(0);
+
+  const currentRoomRef = useRef<string | null>(null);
+  const hasConnectedRef = useRef(false);
 
   useEffect(() => {
     fetchCurrentUser();
   }, []);
 
-  // Whenever the active workspace changes, leave the old room and join the new one
   useEffect(() => {
     const socket = getSocket();
     if (!socket || !workspace) return;
 
-    if (currentRoomRef.current && currentRoomRef.current !== workspace.id) {
+    const workspaceId = workspace.id;
+
+    const joinRoom = (isReconnect: boolean) => {
+      socket.emit(
+        "workspace:join",
+        workspaceId,
+        (response: { success: boolean; message?: string }) => {
+          if (!response.success) {
+            console.error("Failed to join workspace room:", response.message);
+            return;
+          }
+          currentRoomRef.current = workspaceId;
+          // Only after the room is re-joined is it safe to refetch: nothing can slip through the gap.
+          if (isReconnect) setResyncKey((k) => k + 1);
+        },
+      );
+    };
+
+    if (currentRoomRef.current && currentRoomRef.current !== workspaceId) {
       socket.emit("workspace:leave", currentRoomRef.current);
     }
 
-    socket.emit(
-      "workspace:join",
-      workspace.id,
-      (response: { success: boolean; message?: string }) => {
-        if (response.success) {
-          currentRoomRef.current = workspace.id;
-        } else {
-          console.error("Failed to join workspace room:", response.message);
-        }
-      },
-    );
+    // Already connected: join now.
+    if (socket.connected) {
+      hasConnectedRef.current = true;
+      joinRoom(false);
+    }
+
+    // "connect" fires on the first connection AND on every reconnect.
+    // After a reconnect the server has forgotten our rooms, so we must join again.
+    const onConnect = () => {
+      const isReconnect = hasConnectedRef.current;
+      hasConnectedRef.current = true;
+      joinRoom(isReconnect);
+    };
+    socket.on("connect", onConnect);
+
+    return () => {
+      socket.off("connect", onConnect);
+    };
   }, [workspace]);
 
   function pickActiveWorkspace(list: WorkspaceSummary[], preferredId?: string) {
@@ -121,6 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("activeWorkspaceId");
     disconnectSocket();
     currentRoomRef.current = null;
+    hasConnectedRef.current = false;
     setUser(null);
     setWorkspace(null);
     setWorkspaces([]);
@@ -144,6 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         workspace,
         workspaces,
         loading,
+        resyncKey,
         login,
         register,
         logout,

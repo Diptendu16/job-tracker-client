@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
-import { type NeedsAttentionItem } from "../types/application";
+import { useState, useEffect, useCallback } from "react";
+import type { Application, NeedsAttentionItem } from "../types/application";
 import * as applicationApi from "../api/applicationApi";
 
 interface Props {
   workspaceId: string;
   refreshKey: number;
-  onItemClick: (item: NeedsAttentionItem["application"]) => void;
+  onItemClick: (item: Application) => void;
 }
 
 const reasonStyles: Record<string, string> = {
@@ -24,21 +24,24 @@ export function NeedsAttentionPanel({
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
 
-  useEffect(() => {
-    load();
-  }, [workspaceId, refreshKey]);
-
-  async function load() {
-    setLoading(true);
+  // Only the initial load counts as "loading". Later refetches are silent, otherwise the
+  // panel would vanish and reappear on every live update. Dashboard remounts this per workspace.
+  const load = useCallback(async () => {
     try {
       const data = await applicationApi.fetchNeedsAttention(workspaceId);
       setItems(data);
+    } catch {
+      console.error("Failed to load needs-attention items");
     } finally {
       setLoading(false);
     }
-  }
+  }, [workspaceId]);
 
-  if (loading || items.length === 0) return null; 
+  useEffect(() => {
+    load();
+  }, [load, refreshKey]);
+
+  if (loading || items.length === 0) return null;
 
   const visibleItems = expanded ? items : items.slice(0, 3);
 

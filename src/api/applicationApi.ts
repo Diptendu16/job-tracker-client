@@ -6,6 +6,7 @@ import type {
   Pagination,
   NeedsAttentionItem,
 } from "../types/application";
+import { format } from "date-fns";
 
 interface ListResponse {
   applications: Application[];
@@ -60,8 +61,14 @@ export async function deleteApplication(workspaceId: string, id: string) {
 }
 
 export async function fetchNeedsAttention(workspaceId: string) {
+  // format() uses the browser's local time, so this is the user's own calendar date.
+  // (toISOString() would give the UTC date, which is exactly the bug we're fixing.)
+  const today = format(new Date(), "yyyy-MM-dd");
   const res = await api.get(
     `/workspaces/${workspaceId}/applications/needs-attention`,
+    {
+      params: { today },
+    },
   );
   return res.data.data as NeedsAttentionItem[];
 }

@@ -1,23 +1,24 @@
-import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "../context/AuthContext";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import type {
   Application,
   ApplicationFilters,
   Pagination as PaginationType,
 } from "../types/application";
 import * as applicationApi from "../api/applicationApi";
+import { useSocketEvent } from "../hooks/useSocketEvent";
 import { ApplicationModal } from "../components/ApplicationModal";
 import { Pagination } from "../components/Pagination";
 import { StatusBadge } from "../components/StatusBadge";
-import { format } from "date-fns";
 import { KanbanBoard } from "../components/KanbanBoard";
 import { NeedsAttentionPanel } from "../components/NeedsAttentionPanel";
 import { WorkspaceSwitcher } from "../components/WorkspaceSwitcher";
 import { InviteMembersButton } from "../components/InviteMembersButton";
+import { format } from "date-fns";
 
 export default function Dashboard() {
-  const { user, workspace, logout } = useAuth();
+  const { user, workspace, logout, resyncKey } = useAuth();
 
   const [applications, setApplications] = useState<Application[]>([]);
   const [pagination, setPagination] = useState<PaginationType | null>(null);
@@ -31,29 +32,56 @@ export default function Dashboard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingApp, setEditingApp] = useState<Application | null>(null);
   const [view, setView] = useState<"table" | "board">("table");
-  const [boardRefreshKey, setBoardRefreshKey] = useState(0);
 
-  const loadApplications = useCallback(async () => {
-    if (!workspace) return;
-    setLoading(true);
-    try {
-      const result = await applicationApi.fetchApplications(
-        workspace.id,
-        filters,
-      );
-      setApplications(result.applications);
-      setPagination(result.pagination);
-    } catch {
-      console.error("Failed to load applications");
-    } finally {
-      setLoading(false);
-    }
-  }, [workspace, filters]);
+  // Local changes (modal, drag) refresh the board AND the panel.
+  // Remote changes patch the board directly, so only the panel and table are refetched for them.
+  const [boardRefreshKey, setBoardRefreshKey] = useState(0);
+  const [panelRefreshKey, setPanelRefreshKey] = useState(0);
+
+  const remoteRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // `silent` skips the "Loading..." row, so live updates don't flash the table.
+  const loadApplications = useCallback(
+    async (silent = false) => {
+      if (!workspace) return;
+      if (!silent) setLoading(true);
+      try {
+        const result = await applicationApi.fetchApplications(
+          workspace.id,
+          filters,
+        );
+        setApplications(result.applications);
+        setPagination(result.pagination);
+      } catch {
+        console.error("Failed to load applications");
+      } finally {
+        if (!silent) setLoading(false);
+      }
+    },
+    [workspace, filters],
+  );
+
+  // Always points at the latest loadApplications, for use inside timers.
+  const loadApplicationsRef = useRef(loadApplications);
+  useEffect(() => {
+    loadApplicationsRef.current = loadApplications;
+  }, [loadApplications]);
+
   useEffect(() => {
     loadApplications();
   }, [loadApplications]);
 
-  // Debounce company search so we don't fire a request on every keystroke
+  useEffect(() => {
+    if (view === "table") {
+      loadApplications();
+    }
+  }, [view, loadApplications]);
+
+  // After a reconnect, refetch the table silently (the board and panel pick up resyncKey via their keys).
+  useEffect(() => {
+    if (resyncKey > 0) loadApplicationsRef.current(true);
+  }, [resyncKey]);
+
   useEffect(() => {
     const timeout = setTimeout(() => {
       setFilters((f) => ({
@@ -66,10 +94,42 @@ export default function Dashboard() {
   }, [companySearch]);
 
   useEffect(() => {
-    if (view === "table") {
-      loadApplications();
-    }
-  }, [view, loadApplications]);
+    return () => {
+      if (remoteRefreshTimer.current) clearTimeout(remoteRefreshTimer.current);
+    };
+  }, []);
+
+  // A burst of events (e.g. someone dragging several cards) causes one refetch, not many.
+  function scheduleRemoteRefresh() {
+    if (remoteRefreshTimer.current) clearTimeout(remoteRefreshTimer.current);
+    remoteRefreshTimer.current = setTimeout(() => {
+      loadApplicationsRef.current(true);
+      setPanelRefreshKey((k) => k + 1);
+    }, 400);
+  }
+
+  function handleRemoteChange(payload: { workspaceId: string }) {
+    if (payload.workspaceId === workspace?.id) scheduleRemoteRefresh();
+  }
+
+  useSocketEvent<{ workspaceId: string }>(
+    "application.created",
+    handleRemoteChange,
+  );
+  useSocketEvent<{ workspaceId: string }>(
+    "application.updated",
+    handleRemoteChange,
+  );
+  useSocketEvent<{ workspaceId: string }>(
+    "application.deleted",
+    handleRemoteChange,
+  );
+
+  async function refreshAllData() {
+    await loadApplications();
+    setBoardRefreshKey((k) => k + 1);
+    setPanelRefreshKey((k) => k + 1);
+  }
 
   function openCreateModal() {
     setEditingApp(null);
@@ -79,11 +139,6 @@ export default function Dashboard() {
   function openEditModal(app: Application) {
     setEditingApp(app);
     setModalOpen(true);
-  }
-
-  async function refreshAllData() {
-    await loadApplications();
-    setBoardRefreshKey((k) => k + 1);
   }
 
   async function handleSubmit(data: any) {
@@ -137,6 +192,15 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {workspace && (
+        <NeedsAttentionPanel
+          key={workspace.id}
+          workspaceId={workspace.id}
+          refreshKey={panelRefreshKey + resyncKey}
+          onItemClick={openEditModal}
+        />
+      )}
+
       <div className="flex gap-2 mb-4">
         <button
           onClick={() => setView("table")}
@@ -159,7 +223,7 @@ export default function Dashboard() {
               placeholder="Search by company..."
               value={companySearch}
               onChange={(e) => setCompanySearch(e.target.value)}
-              className="bg-gray-800 p-2 rounded flex-1 min-w-50"
+              className="bg-gray-800 p-2 rounded flex-1 min-w-[200px]"
             />
 
             <select
@@ -258,19 +322,12 @@ export default function Dashboard() {
         </>
       )}
 
-      {workspace && (
-        <NeedsAttentionPanel
-          workspaceId={workspace.id}
-          refreshKey={boardRefreshKey}
-          onItemClick={openEditModal}
-        />
-      )}
-
       {view === "board" && workspace && (
         <KanbanBoard
+          key={workspace.id}
           workspaceId={workspace.id}
           onCardClick={openEditModal}
-          refreshKey={boardRefreshKey}
+          refreshKey={boardRefreshKey + resyncKey}
           onStatusUpdated={refreshAllData}
         />
       )}
