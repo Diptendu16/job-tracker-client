@@ -15,6 +15,7 @@ import { KanbanBoard } from "../components/KanbanBoard";
 import { NeedsAttentionPanel } from "../components/NeedsAttentionPanel";
 import { WorkspaceSwitcher } from "../components/WorkspaceSwitcher";
 import { InviteMembersButton } from "../components/InviteMembersButton";
+import { ActivityFeed } from "../components/ActivityFeed";
 import { format } from "date-fns";
 
 export default function Dashboard() {
@@ -32,6 +33,7 @@ export default function Dashboard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingApp, setEditingApp] = useState<Application | null>(null);
   const [view, setView] = useState<"table" | "board">("table");
+  const [activityOpen, setActivityOpen] = useState(false);
 
   // Local changes (modal, drag) refresh the board AND the panel.
   // Remote changes patch the board directly, so only the panel and table are refetched for them.
@@ -201,7 +203,7 @@ export default function Dashboard() {
         />
       )}
 
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-2 mb-4 items-center">
         <button
           onClick={() => setView("table")}
           className={`px-3 py-1 rounded text-sm ${view === "table" ? "bg-blue-600" : "bg-gray-700"}`}
@@ -214,7 +216,21 @@ export default function Dashboard() {
         >
           Board
         </button>
+        <button
+          onClick={() => setActivityOpen((o) => !o)}
+          className={`ml-auto px-3 py-1 rounded text-sm ${activityOpen ? "bg-blue-600" : "bg-gray-700"}`}
+        >
+          Activity
+        </button>
       </div>
+
+      {activityOpen && workspace && (
+        <ActivityFeed
+          key={workspace.id}
+          workspaceId={workspace.id}
+          refreshKey={resyncKey}
+        />
+      )}
 
       {view === "table" && (
         <>
