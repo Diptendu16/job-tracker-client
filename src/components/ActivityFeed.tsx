@@ -58,6 +58,8 @@ export function ActivityFeed({ workspaceId, refreshKey }: Props) {
   const [entries, setEntries] = useState<ActivityEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [clearing, setClearing] = useState(false);
+  const [clearError, setClearError] = useState("");
   const [, setTick] = useState(0);
 
   // Only the first load shows "Loading". Later refetches are silent and merge into what's there.
@@ -88,9 +90,38 @@ export function ActivityFeed({ workspaceId, refreshKey }: Props) {
     setEntries((prev) => mergeEntries(prev, [payload.activity]));
   });
 
+  async function handleClear() {
+    if (!confirm("Clear your activity feed? Other members will still see it."))
+      return;
+    setClearing(true);
+    setClearError("");
+    try {
+      await activityApi.clearActivity(workspaceId);
+      // Only empty the screen after the server has recorded the clear
+      setEntries([]);
+    } catch {
+      setClearError("Could not clear activity. Please try again.");
+    } finally {
+      setClearing(false);
+    }
+  }
+
   return (
     <div className="bg-gray-800 rounded-lg p-4 mb-6">
-      <h2 className="font-semibold text-gray-300 mb-3">Activity</h2>
+      <div className="flex justify-between items-center mb-3">
+        <h2 className="font-semibold text-gray-300">Activity</h2>
+        {entries.length > 0 && (
+          <button
+            onClick={handleClear}
+            disabled={clearing}
+            className="text-sm text-gray-400 hover:text-red-300 hover:underline disabled:opacity-50"
+          >
+            {clearing ? "Clearing..." : "Clear all"}
+          </button>
+        )}
+      </div>
+
+      {clearError && <p className="text-red-300 text-sm mb-3">{clearError}</p>}
 
       {error && (
         <p className="text-red-300 text-sm mb-3">
@@ -105,7 +136,7 @@ export function ActivityFeed({ workspaceId, refreshKey }: Props) {
         <p className="text-gray-400 text-sm">Loading activity...</p>
       ) : entries.length === 0 && !error ? (
         <p className="text-gray-400 text-sm">
-          No activity yet. Changes made in this workspace will show up here.
+          Nothing to show. New changes in this workspace will appear here.
         </p>
       ) : (
         <ul className="space-y-2 max-h-72 overflow-y-auto">

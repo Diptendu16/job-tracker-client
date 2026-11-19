@@ -7,3 +7,7 @@ export async function fetchActivity(workspaceId: string, limit = 30) {
   });
   return res.data.data as ActivityEntry[];
 }
+
+export async function clearActivity(workspaceId: string) {
+  await api.post(`/workspaces/${workspaceId}/activity/clear`);
+}
