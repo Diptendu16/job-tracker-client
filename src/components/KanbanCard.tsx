@@ -1,6 +1,6 @@
 import { useDraggable } from "@dnd-kit/core";
 import { type Application } from "../types/application";
-import { format } from "date-fns";
+import { formatDateOnly } from "../utils/dates";
 
 interface Props {
   application: Application;
@@ -31,7 +31,7 @@ export function KanbanCard({ application, onClick }: Props) {
       <p className="font-semibold text-white text-sm">{application.company}</p>
       <p className="text-gray-300 text-xs">{application.role}</p>
       <p className="text-gray-400 text-xs mt-1">
-        {format(new Date(application.appliedDate), "MMM d, yyyy")}
+        {formatDateOnly(application.appliedDate)}
       </p>
     </div>
   );

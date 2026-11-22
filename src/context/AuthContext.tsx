@@ -47,6 +47,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fetchCurrentUser();
   }, []);
 
+  // Any request that comes back 401 mid-session fires this event (see api/axios.ts).
+  // Clearing the user is enough: ProtectedRoute then redirects to /login on its own.
+  useEffect(() => {
+    const handleExpired = () => {
+      localStorage.removeItem("token");
+      localStorage.removeItem("activeWorkspaceId");
+      disconnectSocket();
+      currentRoomRef.current = null;
+      hasConnectedRef.current = false;
+      setUser(null);
+      setWorkspace(null);
+      setWorkspaces([]);
+    };
+
+    window.addEventListener("auth:expired", handleExpired);
+    return () => window.removeEventListener("auth:expired", handleExpired);
+  }, []);
+
   useEffect(() => {
     const socket = getSocket();
     if (!socket || !workspace) return;

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { type ResumeVersion } from "../types/resumeVersion";
 import * as resumeVersionApi from "../api/resumeVersionApi";
+import axios from "axios";
 
 export default function ResumeVersions() {
   const { workspace } = useAuth();
@@ -12,6 +13,7 @@ export default function ResumeVersions() {
   const [url, setUrl] = useState("");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
+  const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
     if (workspace) loadVersions();
@@ -50,8 +52,18 @@ export default function ResumeVersions() {
   async function handleDelete(id: string) {
     if (!workspace) return;
     if (!confirm("Delete this resume version?")) return;
-    await resumeVersionApi.deleteResumeVersion(workspace.id, id);
-    await loadVersions();
+    setDeleteError("");
+    try {
+      await resumeVersionApi.deleteResumeVersion(workspace.id, id);
+      await loadVersions();
+    } catch (err) {
+      setDeleteError(
+        axios.isAxiosError(err) &&
+          typeof err.response?.data?.message === "string"
+          ? err.response.data.message
+          : "Could not delete this resume version.",
+      );
+    }
   }
 
   return (
@@ -96,6 +108,10 @@ export default function ResumeVersions() {
           Add Version
         </button>
       </form>
+
+      {deleteError && (
+        <p className="text-red-400 text-sm mb-3">{deleteError}</p>
+      )}
 
       <div className="bg-gray-800 rounded-lg divide-y divide-gray-700">
         {loading ? (

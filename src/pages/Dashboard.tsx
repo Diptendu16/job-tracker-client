@@ -16,7 +16,7 @@ import { NeedsAttentionPanel } from "../components/NeedsAttentionPanel";
 import { WorkspaceSwitcher } from "../components/WorkspaceSwitcher";
 import { InviteMembersButton } from "../components/InviteMembersButton";
 import { ActivityFeed } from "../components/ActivityFeed";
-import { format } from "date-fns";
+import { formatDateOnly } from "../utils/dates";
 
 export default function Dashboard() {
   const { user, workspace, logout, resyncKey } = useAuth();
@@ -239,7 +239,7 @@ export default function Dashboard() {
               placeholder="Search by company..."
               value={companySearch}
               onChange={(e) => setCompanySearch(e.target.value)}
-              className="bg-gray-800 p-2 rounded flex-1 min-w-[200px]"
+              className="bg-gray-800 p-2 rounded flex-1 min-w-50"
             />
 
             <select
@@ -306,7 +306,7 @@ export default function Dashboard() {
                         <StatusBadge status={app.status} />
                       </td>
                       <td className="p-3 text-gray-400 text-sm">
-                        {format(new Date(app.appliedDate), "MMM d, yyyy")}
+                        {formatDateOnly(app.appliedDate)}
                       </td>
                       <td className="p-3 space-x-2">
                         <button
